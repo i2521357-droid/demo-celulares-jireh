@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistema ERP - Celulares Jireh{% endblock %}</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f4f6f9;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+        .sidebar {
+            min-height: 100vh;
+            width: 250px;
+            background: linear-gradient(180deg, #072a60 0%, #0d47a1 100%);
+            color: #fff;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+            padding-top: 20px;
+        }
+        .sidebar .brand {
+            font-size: 1.25rem;
+            font-weight: 800;
+            text-align: center;
+            letter-spacing: 1px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 15px;
+        }
+        .sidebar .nav-link {
+            color: rgba(255,255,255,0.8);
+            font-weight: 600;
+            padding: 12px 20px;
+            margin: 4px 12px;
+            border-radius: 8px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+        }
+        .sidebar .nav-link i {
+            width: 28px;
+            font-size: 1.1rem;
+        }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background-color: rgba(255,255,255,0.15);
+            color: #fff;
+        }
+        .main-content {
+            margin-left: 250px;
+            padding: 20px 30px;
+        }
+        .top-navbar {
+            background: #fff;
+            border-radius: 12px;
+            padding: 14px 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+    <!-- MENÚ LATERAL -->
+    <div class="sidebar">
+      <div class="brand">
+          <i class="fa-solid fa-mobile-screen-button text-info me-2"></i>CELULARES<br>JIREH
+      </div>
+
+      <a href="{{ url_for('index') }}" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}">
+          <i class="fa-solid fa-house"></i> Dashboard
+      </a>
+
+      <div class="text-white-50 small fw-bold px-4 mt-3 mb-1" style="font-size: 0.7rem; letter-spacing: 1px;">OPERACIONES</div>
+      <a href="{{ url_for('punto_venta') }}" class="nav-link {% if request.endpoint == 'punto_venta' %}active{% endif %}">
+          <i class="fa-solid fa-cart-shopping"></i> Punto de Venta
+      </a>
+      <a href="{{ url_for('servicio_tecnico') }}" class="nav-link {% if request.endpoint in ['servicio_tecnico', 'nueva_orden'] %}active{% endif %}">
+          <i class="fa-solid fa-screwdriver-wrench"></i> Serv. Técnico
+      </a>
+
+      <div class="text-white-50 small fw-bold px-4 mt-3 mb-1" style="font-size: 0.7rem; letter-spacing: 1px;">INVENTARIO Y GESTIÓN</div>
+      <a href="{{ url_for('repuestos') }}" class="nav-link {% if request.endpoint in ['repuestos', 'nuevo_repuesto'] %}active{% endif %}">
+          <i class="fa-solid fa-microchip"></i> Repuestos
+      </a>
+      <a href="{{ url_for('accesorios') }}" class="nav-link {% if request.endpoint in ['accesorios', 'nuevo_accesorio'] %}active{% endif %}">
+          <i class="fa-solid fa-headphones"></i> Accesorios
+      </a>
+      <a href="{{ url_for('celulares') }}" class="nav-link {% if request.endpoint in ['celulares', 'nuevo_celular'] %}active{% endif %}">
+          <i class="fa-solid fa-mobile-screen"></i> Celulares
+      </a>
+      <a href="{{ url_for('pedidos') }}" class="nav-link {% if request.endpoint == 'pedidos' %}active{% endif %}">
+          <i class="fa-solid fa-truck-fast"></i> Pedidos
+      </a>
+
+      {% if session.get('rol') == 'ADMINISTRADOR' %}
+      <div class="text-white-50 small fw-bold px-4 mt-3 mb-1" style="font-size: 0.7rem; letter-spacing: 1px;">ADMINISTRACIÓN</div>
+      <a href="{{ url_for('reportes') }}" class="nav-link {% if request.endpoint == 'reportes' %}active{% endif %}">
+          <i class="fa-solid fa-chart-line"></i> Reportes
+      </a>
+      <a href="{{ url_for('personal') }}" class="nav-link {% if request.endpoint == 'personal' %}active{% endif %}">
+          <i class="fa-solid fa-user-shield"></i> Personal
+      </a>
+      {% endif %}
+  </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <div class="main-content">
+        <!-- BARRA SUPERIOR -->
+        <div class="top-navbar mb-3">
+            <h5 class="fw-bold text-primary m-0">
+                {% if session.get('rol') == 'ADMINISTRADOR' %}
+                    Panel Administrativo
+                {% else %}
+                    Área de Operaciones
+                {% endif %}
+            </h5>
+
+            <div class="dropdown">
+                <button class="btn btn-light fw-bold text-primary border-0 dropdown-toggle d-flex align-items-center" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="me-2 small">BIENVENIDO, {{ session.get('alias', 'USUARIO') | upper }}</span>
+                    <i class="fa-solid fa-circle-user fs-4"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                    <li><a class="dropdown-item fw-bold small py-2" href="{{ url_for('perfil') }}"><i class="fa-solid fa-user-gear me-2 text-primary"></i>Mi Perfil</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item fw-bold small py-2 text-danger" href="{{ url_for('logout') }}"><i class="fa-solid fa-right-from-bracket me-2"></i>Cerrar Sesión</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- ALERTAS DE SEGURIDAD Y PERMISOS (FLASH) -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm border-0 fw-bold mt-3" role="alert">
+                    <i class="fa-solid fa-shield-halved me-2"></i>{{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- BLOQUE DINÁMICO DE CADA PÁGINA -->
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- JQuery y Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block title %}Mi Perfil - Celulares Jireh{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 mx-auto">
+        <div class="card border-0 shadow-sm rounded-3 mt-4">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-2">
+                <h5 class="fw-bold text-primary"><i class="fa-solid fa-user-gear me-2"></i>Actualizar Mis Datos</h5>
+            </div>
+            <div class="card-body p-4">
+                
+                <form id="frmPerfil">
+                    <div class="row g-3">
+                        <!-- Campos bloqueados (Solo lectura) -->
+                        <div class="col-md-12">
+                            <label class="form-label text-muted small fw-bold">NOMBRES Y APELLIDOS</label>
+                            <input type="text" class="form-control bg-light text-muted" value="{{ user.nombres }} {{ user.apellidos }}" readonly>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label text-muted small fw-bold">ROL ASIGNADO</label>
+                            <input type="text" class="form-control bg-light text-muted" value="{{ user.rol_asignado.nombre }}" readonly>
+                        </div>
+
+                        <!-- Campo Editable -->
+                        <div class="col-md-12 mt-4">
+                            <label class="form-label text-muted small fw-bold">NOMBRE DE USUARIO</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fa-solid fa-at"></i></span>
+                                <input type="text" name="usuario" id="usuario" class="form-control" value="{{ user.usuario }}" required>
+                            </div>
+                        </div>
+
+                        <hr class="text-light my-4">
+                        <h6 class="fw-bold text-secondary mb-3"><i class="fa-solid fa-lock me-2"></i>Seguridad de la Cuenta</h6>
+
+                        <div class="col-md-12">
+                            <label class="form-label text-muted small fw-bold">CONTRASEÑA ACTUAL (Requerida)</label>
+                            <input type="password" name="password_actual" id="password_actual" class="form-control" placeholder="Ingrese su contraseña actual para validar" required>
+                        </div>
+                        
+                        <div class="col-md-6 mt-3">
+                            <label class="form-label text-muted small fw-bold">NUEVA CONTRASEÑA (Opcional)</label>
+                            <input type="password" name="password_nueva" id="password_nueva" class="form-control" placeholder="Dejar en blanco si no desea cambiar">
+                        </div>
+                        <div class="col-md-6 mt-3">
+                            <label class="form-label text-muted small fw-bold">CONFIRMAR NUEVA</label>
+                            <input type="password" name="password_confirmar" id="password_confirmar" class="form-control" placeholder="Repita la nueva contraseña">
+                        </div>
+                    </div>
+
+                    <div class="text-end mt-4">
+                        <button type="submit" class="btn btn-primary fw-bold px-4" id="btnActualizar">
+                            <i class="fa-solid fa-arrows-rotate me-2"></i>Actualizar Perfil
+                        </button>
+                    </div>
+                    
+                    <div id="mensajePerfil" class="mt-3"></div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        $("#frmPerfil").submit(function(e) {
+            e.preventDefault(); 
+            
+            // Validación visual en el frontend antes de enviar
+            let pwdNueva = $("#password_nueva").val();
+            let pwdConfirma = $("#password_confirmar").val();
+            
+            if (pwdNueva !== "" && pwdNueva !== pwdConfirma) {
+                $("#mensajePerfil").html('<div class="alert alert-warning mt-3"><i class="fa-solid fa-triangle-exclamation me-2"></i>Las contraseñas nuevas no coinciden.</div>');
+                return;
+            }
+
+            let btn = $("#btnActualizar");
+            let txtOriginal = btn.html();
+            
+            btn.html('<i class="fa-solid fa-circle-notch fa-spin me-2"></i>Procesando...');
+            btn.prop('disabled', true);
+            
+            $.ajax({
+                url: '/api/actualizar_perfil', 
+                method: 'POST',
+                data: $(this).serialize(), 
+                success: function(respuesta) {
+                    if(respuesta.status === 'success') {
+                        $("#mensajePerfil").html('<div class="alert alert-success mt-3"><i class="fa-solid fa-check me-2"></i>' + respuesta.msg + '</div>');
+                        // Limpiar campos de contraseña por seguridad
+                        $("#password_actual").val('');
+                        $("#password_nueva").val('');
+                        $("#password_confirmar").val('');
+                    } else {
+                        $("#mensajePerfil").html('<div class="alert alert-danger mt-3"><i class="fa-solid fa-circle-xmark me-2"></i>' + respuesta.msg + '</div>');
+                    }
+                    btn.html(txtOriginal);
+                    btn.prop('disabled', false);
+                },
+                error: function() {
+                    $("#mensajePerfil").html('<div class="alert alert-danger mt-3">Error interno al procesar.</div>');
+                    btn.html(txtOriginal);
+                    btn.prop('disabled', false);
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,518 @@
+{% extends 'base.html' %}
+
+{% block title %}Nueva Orden - Servicio Técnico{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    .select2-container .select2-selection--single { height: 38px; border: 1px solid #dee2e6; border-radius: 6px; }
+    .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 36px; font-weight: bold; }
+    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 36px; }
+    .resumen-caja { background: #f8f9fa; border-radius: 8px; border-left: 4px solid #ffc107; }
+    
+    /* ESTILOS PARA LA MATRIZ DE PATRÓN */
+    .pattern-container { width: 180px; margin: 0 auto; display: none; }
+    .pattern-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; background: #343a40; padding: 20px; border-radius: 10px; }
+    .pattern-dot { width: 30px; height: 30px; background: #6c757d; border-radius: 50%; cursor: pointer; transition: 0.2s; position: relative; }
+    .pattern-dot.active { background: #ffc107; box-shadow: 0 0 10px #ffc107; }
+    .pattern-dot.active::after { content: attr(data-order); position: absolute; top: -25px; left: 10px; font-size: 12px; color: #fff; font-weight: bold; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-10 mx-auto">
+        <div class="card border-0 shadow-sm rounded-3 mt-4 mb-5">
+            <div class="card-header bg-warning text-dark pt-3 pb-3 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold m-0"><i class="fa-solid fa-file-signature me-2"></i>Nueva Orden de Servicio</h5>
+                <a href="{{ url_for('servicio_tecnico') }}" class="btn btn-sm btn-dark fw-bold">
+                    <i class="fa-solid fa-arrow-left me-2"></i>Volver
+                </a>
+            </div>
+            
+            <div class="card-body p-4">
+                <form id="frmNuevaOrden" novalidate>
+                    
+                    <div class="row">
+                        <!-- COLUMNA IZQUIERDA: CLIENTE Y EQUIPO -->
+                        <div class="col-md-6 border-end pe-4">
+                            <h6 class="fw-bold text-secondary mb-3 border-bottom pb-2"><i class="fa-solid fa-user me-2"></i>Datos del Cliente</h6>
+                            
+                            <!-- TIPO DE DOCUMENTO CONTROLADO -->
+                            <div class="d-flex justify-content-start mb-2 bg-light p-2 rounded">
+                                <div class="form-check me-4">
+                                    <input class="form-check-input" type="radio" name="tipoComprobante" id="optDNI" value="DNI" checked>
+                                    <label class="form-check-label fw-bold small" for="optDNI">DNI</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="tipoComprobante" id="optRUC" value="RUC">
+                                    <label class="form-check-label fw-bold small" for="optRUC">RUC</label>
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-12">
+                                    <label class="form-label text-muted small fw-bold" id="lblDoc">N° DNI (8 Dígitos) *</label>
+                                    <div class="input-group">
+                                        <input type="text" id="docCliente" name="documento" class="form-control fw-bold border-primary" maxlength="8" required placeholder="Buscar en APISPERU...">
+                                        <button class="btn btn-primary fw-bold" type="button" id="btnBuscarDoc">
+                                            <i class="fa-solid fa-magnifying-glass"></i>
+                                        </button>
+                                    </div>
+                                    <input type="hidden" id="tokenApisPeru" value="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImRhbmllbGl0bzQwNDZAZ21haWwuY29tIiwianRpIjoiNjUzMDk4Yjc1Yjk4OTJjNCJ9.2SMRYXJpblg-y4M9wtH8nUvX40HByW4r45C_grYNO_8">
+                                    <div id="msgApi" class="form-text small fw-bold"></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label text-muted small fw-bold" id="lblNom">NOMBRES Y APELLIDOS *</label>
+                                    <input type="text" id="nombreCliente" name="nombre" class="form-control text-uppercase fw-bold bg-light" required readonly>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label text-muted small fw-bold">TELÉFONO DE CONTACTO</label>
+                                    <input type="text" name="telefono" class="form-control fw-bold text-primary" placeholder="Para avisar cuando esté listo">
+                                </div>
+                            </div>
+
+                            <h6 class="fw-bold text-secondary mb-3 border-bottom pb-2"><i class="fa-solid fa-mobile-retro me-2"></i>Datos del Equipo</h6>
+                            <div class="row g-3 mb-3">
+                                <!-- MARCA Y MODELO SEPARADOS CON DATALIST (Dejamos los datalists vacíos, los podemos llenar luego o que el técnico escriba) -->
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">MARCA *</label>
+                                    <input type="text" name="marca" class="form-control text-uppercase fw-bold border-warning" required placeholder="Ej: XIAOMI">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">MODELO *</label>
+                                    <input type="text" name="modelo" class="form-control text-uppercase fw-bold border-warning" required placeholder="Ej: POCO X3 PRO">
+                                </div>
+
+                                <!-- IMEI CONTROLADO -->
+                                <div class="col-md-12 bg-light p-2 rounded">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <label class="form-label text-muted small fw-bold m-0">IMEI O SERIE (15 Dígitos) *</label>
+                                        <div class="form-check m-0">
+                                            <input class="form-check-input" type="checkbox" id="chkOmitirImei">
+                                            <label class="form-check-label small text-danger fw-bold" for="chkOmitirImei">Omitir (No visible)</label>
+                                        </div>
+                                    </div>
+                                    <input type="text" name="imei" id="imeiInput" class="form-control text-center fw-bold text-primary border-primary" maxlength="15" required placeholder="Identificador único">
+                                    <div class="form-text text-end small fw-bold" id="imeiCount">0 / 15</div>
+                                </div>
+
+                                <!-- TIPO DE SEGURIDAD (CONTRASEÑA VS PATRÓN) -->
+                                <div class="col-md-12 mt-3">
+                                    <label class="form-label text-muted small fw-bold">SEGURIDAD DEL EQUIPO *</label>
+                                    <select id="tipoSeguridad" class="form-select border-danger text-danger fw-bold mb-2">
+                                        <option value="PIN">PIN / Contraseña / Sin Clave</option>
+                                        <option value="PATRON">Patrón de Desbloqueo</option>
+                                    </select>
+                                    
+                                    <!-- Caja Normal -->
+                                    <input type="text" name="patron_texto" id="inputContrasena" class="form-control text-center fw-bold border-danger" required placeholder="Escriba la clave o 'NINGUNA'">
+                                    
+                                    <!-- Matriz de Patrón Oculta -->
+                                    <div class="pattern-container mt-3" id="panelPatron">
+                                        <div class="pattern-grid" id="patternGrid">
+                                            <div class="pattern-dot" data-val="1"></div><div class="pattern-dot" data-val="2"></div><div class="pattern-dot" data-val="3"></div>
+                                            <div class="pattern-dot" data-val="4"></div><div class="pattern-dot" data-val="5"></div><div class="pattern-dot" data-val="6"></div>
+                                            <div class="pattern-dot" data-val="7"></div><div class="pattern-dot" data-val="8"></div><div class="pattern-dot" data-val="9"></div>
+                                        </div>
+                                        <div class="text-center mt-2">
+                                            <button type="button" class="btn btn-sm btn-outline-light text-muted" onclick="limpiarPatron()">Borrar Patrón</button>
+                                        </div>
+                                        <!-- Aquí guardaremos el resultado del patrón (Ej: 1-2-3-6-9) -->
+                                        <input type="hidden" name="patron_dibujado" id="resultadoPatron">
+                                    </div>
+                                </div>
+
+                                <div class="col-md-12 mt-3">
+                                    <label class="form-label text-muted small fw-bold">FALLA REPORTADA POR EL CLIENTE *</label>
+                                    <textarea name="falla" class="form-control fw-bold text-uppercase" rows="3" required placeholder="Ej: PANTALLA ROTA, NO CARGA, SE REINICIA..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- COLUMNA DERECHA: REPUESTOS Y COSTOS -->
+                        <div class="col-md-6 ps-4">
+                            <h6 class="fw-bold text-secondary mb-3 border-bottom pb-2"><i class="fa-solid fa-microchip me-2"></i>Asignación de Repuestos</h6>
+                            
+                            <div class="mb-3">
+                                <label class="form-label text-muted small fw-bold">BUSCAR EN INVENTARIO</label>
+                                <select id="buscadorRepuestos" class="form-control" style="width: 100%;"></select>
+                            </div>
+
+                            <div class="table-responsive mb-4">
+                                <table class="table table-sm align-middle text-center" style="font-size: 0.85rem;">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="60%" class="text-start">REPUESTO</th>
+                                            <th width="20%">CANT</th>
+                                            <th width="15%">TOTAL</th>
+                                            <th width="5%"><i class="fa-solid fa-trash"></i></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="cuerpoRepuestos">
+                                        <tr id="filaSinRepuestos">
+                                            <td colspan="4" class="text-muted py-3">Solo mano de obra (Sin repuestos)</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <h6 class="fw-bold text-secondary mb-3 border-bottom pb-2"><i class="fa-solid fa-calculator me-2"></i>Presupuesto</h6>
+                            
+                            <div class="resumen-caja p-3 mb-4 shadow-sm">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="small fw-bold text-muted">Costo Repuestos:</span>
+                                    <span class="fw-bold text-dark">S/ <span id="montoRepuestos">0.00</span></span>
+                                </div>
+                                
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="small fw-bold text-muted mt-2">Mano de Obra:</span>
+                                    <div class="input-group input-group-sm w-50">
+                                        <span class="input-group-text bg-white fw-bold">S/</span>
+                                        <input type="number" step="0.01" min="0" id="inputManoObra" name="mano_obra" class="form-control fw-bold text-end" value="0.00">
+                                    </div>
+                                </div>
+                                
+                                <hr class="my-2 border-secondary">
+                                
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="fw-bold text-dark">COSTO TOTAL:</span>
+                                    <span class="fw-bold text-primary fs-5">S/ <span id="montoTotal">0.00</span></span>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="small fw-bold text-success mt-2">Adelanto / A Cuenta:</span>
+                                    <div class="input-group input-group-sm w-50">
+                                        <span class="input-group-text bg-success text-white fw-bold">S/</span>
+                                        <input type="number" step="0.01" min="0" id="inputAcuenta" name="acuenta" class="form-control fw-bold text-end border-success" value="0.00">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between align-items-center p-2 bg-danger text-white rounded shadow-sm text-center">
+                                <span class="fw-bold">SALDO PENDIENTE:</span>
+                                <span class="fw-bold fs-5">S/ <span id="montoSaldo">0.00</span></span>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div id="mensajeRegistro" class="mt-4"></div>
+
+                    <div class="text-end mt-4 border-top pt-3">
+                        <button type="submit" class="btn btn-warning btn-lg fw-bold px-5 shadow-sm" id="btnGuardarOrden">
+                            <i class="fa-solid fa-toolbox me-2"></i>Generar Orden e Imprimir
+                        </button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    // --- 1. LÓGICA DNI/RUC CONTROLADO ---
+    const radioDNI = document.getElementById('optDNI');
+    const radioRUC = document.getElementById('optRUC');
+    const inputDoc = document.getElementById('docCliente');
+    const lblDoc = document.getElementById('lblDoc');
+    const lblNom = document.getElementById('lblNom');
+
+    function actualizarTipoComprobante() {
+        inputDoc.value = ''; document.getElementById('nombreCliente').value = ''; document.getElementById('msgApi').innerHTML = '';
+        if (radioDNI.checked) {
+            lblDoc.innerText = 'N° DNI (8 Dígitos) *'; lblNom.innerText = 'NOMBRES Y APELLIDOS *'; inputDoc.maxLength = 8;
+        } else {
+            lblDoc.innerText = 'N° RUC (11 Dígitos) *'; lblNom.innerText = 'RAZÓN SOCIAL *'; inputDoc.maxLength = 11;
+        }
+    }
+    radioDNI.addEventListener('change', actualizarTipoComprobante);
+    radioRUC.addEventListener('change', actualizarTipoComprobante);
+    inputDoc.addEventListener('input', function() { this.value = this.value.replace(/[^0-9]/g, ''); });
+
+    // APISPERU
+    const token = document.getElementById('tokenApisPeru').value;
+    const msgApi = document.getElementById('msgApi');
+    const inputNombre = document.getElementById('nombreCliente');
+
+    document.getElementById('btnBuscarDoc').addEventListener('click', async function() {
+        const num = inputDoc.value.trim();
+        const tipo = radioDNI.checked ? 'dni' : 'ruc';
+        
+        if ((tipo === 'dni' && num.length !== 8) || (tipo === 'ruc' && num.length !== 11)) {
+            msgApi.className = 'form-text small fw-bold text-danger';
+            msgApi.innerHTML = `<i class="fa-solid fa-xmark me-1"></i>Longitud incorrecta para ${tipo.toUpperCase()}`;
+            return;
+        }
+
+        msgApi.className = 'form-text small fw-bold text-primary';
+        msgApi.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Consultando APISPERU...';
+        inputNombre.value = ''; inputNombre.setAttribute('readonly', true); inputNombre.classList.add('bg-light');
+
+        try {
+            const baseUrl = tipo === "dni" ? "https://dniruc.apisperu.com/api/v1/dni/" : "https://dniruc.apisperu.com/api/v1/ruc/";
+            const response = await fetch(baseUrl + num + "?token=" + encodeURIComponent(token));
+            if (!response.ok) throw new Error("No encontrado");
+
+            const data = await response.json();
+            let nombreExtraido = tipo === 'dni' 
+                ? `${data.nombres || ''} ${data.apellidoPaterno || ''} ${data.apellidoMaterno || ''}`.trim()
+                : data.razonSocial || data.nombre || '';
+
+            if (nombreExtraido && !nombreExtraido.includes('undefined')) {
+                inputNombre.value = nombreExtraido;
+                msgApi.className = 'form-text small fw-bold text-success';
+                msgApi.innerHTML = '<i class="fa-solid fa-check me-1"></i>Encontrado';
+            } else {
+                throw new Error("Sin nombre");
+            }
+        } catch (error) {
+            msgApi.className = 'form-text small fw-bold text-warning text-dark';
+            msgApi.innerHTML = `<i class="fa-solid fa-pen me-1"></i>No encontrado. Escriba el nombre.`;
+            inputNombre.removeAttribute('readonly'); inputNombre.classList.remove('bg-light'); inputNombre.focus();
+        }
+    });
+
+    // --- 2. LÓGICA IMEI OMITIDO ---
+    const chkOmitirImei = document.getElementById('chkOmitirImei');
+    const imeiInput = document.getElementById('imeiInput');
+    const imeiCount = document.getElementById('imeiCount');
+
+    imeiInput.addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
+        imeiCount.innerText = `${this.value.length} / 15`;
+    });
+
+    chkOmitirImei.addEventListener('change', function() {
+        if (this.checked) {
+            imeiInput.value = 'NO VISIBLE';
+            imeiInput.setAttribute('readonly', true);
+            imeiInput.classList.replace('text-primary', 'text-danger');
+            imeiCount.innerText = 'OMITIDO';
+        } else {
+            imeiInput.value = '';
+            imeiInput.removeAttribute('readonly');
+            imeiInput.classList.replace('text-danger', 'text-primary');
+            imeiCount.innerText = '0 / 15';
+        }
+    });
+
+    // --- 3. LÓGICA DE MATRIZ DE PATRÓN ---
+    const selectSeguridad = document.getElementById('tipoSeguridad');
+    const inputContrasena = document.getElementById('inputContrasena');
+    const panelPatron = document.getElementById('panelPatron');
+    const inputPatronOculto = document.getElementById('resultadoPatron');
+    
+    let patronTrazado = [];
+    let dibujando = false;
+
+    selectSeguridad.addEventListener('change', function() {
+        if (this.value === 'PIN') {
+            inputContrasena.style.display = 'block';
+            inputContrasena.setAttribute('required', 'true');
+            panelPatron.style.display = 'none';
+        } else {
+            inputContrasena.style.display = 'none';
+            inputContrasena.removeAttribute('required');
+            inputContrasena.value = '';
+            panelPatron.style.display = 'block';
+            limpiarPatron();
+        }
+    });
+
+    // Eventos para dibujar el patrón
+    $('.pattern-dot').on('mousedown touchstart', function(e) {
+        e.preventDefault();
+        dibujando = true;
+        activarPunto($(this));
+    });
+
+    $(document).on('mouseup touchend', function() {
+        dibujando = false;
+        // Guardamos el resultado en el input oculto
+        inputPatronOculto.value = patronTrazado.join('-');
+    });
+
+    $('.pattern-dot').on('mouseenter touchmove', function(e) {
+        if (!dibujando) return;
+        e.preventDefault();
+        // Soporte para táctil y mouse
+        let elem = this;
+        if (e.type === 'touchmove') {
+            let touch = e.originalEvent.touches[0];
+            elem = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (!$(elem).hasClass('pattern-dot')) return;
+        }
+        activarPunto($(elem));
+    });
+
+    function activarPunto($punto) {
+        let val = $punto.data('val');
+        if (!patronTrazado.includes(val)) {
+            patronTrazado.push(val);
+            $punto.addClass('active');$punto.attr('data-order', patronTrazado.length); // Muestra el número de orden encima del punto
+        }
+    }
+
+    function limpiarPatron() {
+        patronTrazado = [];
+        inputPatronOculto.value = '';
+        $('.pattern-dot').removeClass('active').removeAttr('data-order');
+    }
+
+    // --- 4. LÓGICA DE REPUESTOS Y PRESUPUESTO (Igual al anterior) ---
+    let repuestosOrden = [];
+
+    $(document).ready(function() {$('#buscadorRepuestos').select2({
+            placeholder: "-- Buscar Pantallas, Baterías, Zócalos... --",
+            allowClear: true,
+            ajax: {
+                url: '/api/buscar_productos', dataType: 'json', delay: 250,
+                data: function (params) { return { q: params.term }; },
+                processResults: function (data) {
+                    let itemsValidos = data.filter(item => item.tipo !== 'CELULAR');
+                    return {
+                        results: $.map(itemsValidos, function (item) {
+                            return { text: item.descripcion + " - S/" + item.precio, id: item.id, prod_data: item }
+                        })
+                    };
+                }, cache: true
+            }
+        });
+
+        $('#buscadorRepuestos').on('select2:select', function (e) {
+            let prod = e.params.data.prod_data;
+            let existente = repuestosOrden.find(item => item.id === prod.id);
+            if (existente) {
+                if (existente.cantidad < existente.stock_max) existente.cantidad++;
+                else alert('No hay más stock disponible de este repuesto en almacén.');
+            } else {
+                repuestosOrden.push({ id: prod.id, tipo: prod.tipo, descripcion: prod.descripcion, precio: prod.precio, cantidad: 1, stock_max: prod.stock_max });
+            }
+            renderizarRepuestos(); $(this).val(null).trigger('change');$(this).select2('open'); 
+        });
+    });
+
+    function cambiarCantidad(id, suma) {
+        let item = repuestosOrden.find(i => i.id === id);
+        if (suma && item.cantidad < item.stock_max) item.cantidad++;
+        else if (!suma && item.cantidad > 1) item.cantidad--;
+        renderizarRepuestos();
+    }
+
+    function eliminarRepuesto(id) { repuestosOrden = repuestosOrden.filter(item => item.id !== id); renderizarRepuestos(); }
+
+    function renderizarRepuestos() {
+        const tbody = document.getElementById('cuerpoRepuestos');
+        tbody.innerHTML = ''; let totalRepuestos = 0;
+
+        if (repuestosOrden.length === 0) {
+            tbody.innerHTML = `<tr id="filaSinRepuestos"><td colspan="4" class="text-muted py-3">Solo mano de obra (Sin repuestos de inventario)</td></tr>`;
+        } else {
+            repuestosOrden.forEach(item => {
+                let subtotal = item.precio * item.cantidad;
+                totalRepuestos += subtotal;
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="text-start fw-bold text-dark lh-sm">${item.descripcion}</td>
+                        <td>
+                            <div class="input-group input-group-sm">
+                                <button class="btn btn-outline-secondary px-1 py-0" type="button" onclick="cambiarCantidad('${item.id}', false)">-</button>
+                                <input type="text" class="form-control text-center fw-bold px-0 py-0" value="${item.cantidad}" readonly>
+                                <button class="btn btn-outline-secondary px-1 py-0" type="button" onclick="cambiarCantidad('${item.id}', true)">+</button>
+                            </div>
+                        </td>
+                        <td class="fw-bold text-primary">S/${subtotal.toFixed(2)}</td>
+                        <td><button type="button" class="btn btn-sm btn-outline-danger p-1" onclick="eliminarRepuesto('${item.id}')"><i class="fa-solid fa-xmark"></i></button></td>
+                    </tr>
+                `;
+            });
+        }
+        document.getElementById('montoRepuestos').innerText = totalRepuestos.toFixed(2);
+        calcularPresupuestoFinal();
+    }
+
+    const inputManoObra = document.getElementById('inputManoObra');
+    const inputAcuenta = document.getElementById('inputAcuenta');
+
+    inputManoObra.addEventListener('input', calcularPresupuestoFinal);
+    inputAcuenta.addEventListener('input', calcularPresupuestoFinal);
+
+    function calcularPresupuestoFinal() {
+        let totalRepuestos = parseFloat(document.getElementById('montoRepuestos').innerText) || 0;
+        let manoObra = parseFloat(inputManoObra.value) || 0;
+        let totalGeneral = totalRepuestos + manoObra;
+        document.getElementById('montoTotal').innerText = totalGeneral.toFixed(2);
+        let acuenta = parseFloat(inputAcuenta.value) || 0;
+        if (acuenta > totalGeneral) { inputAcuenta.value = totalGeneral.toFixed(2); acuenta = totalGeneral; }
+        document.getElementById('montoSaldo').innerText = (totalGeneral - acuenta).toFixed(2);
+    }
+
+    // --- 5. GUARDADO AJAX ---
+    $("#frmNuevaOrden").submit(function(e) {
+        e.preventDefault(); 
+        
+        // Validación de IMEI estricto si no está omitido
+        if (!chkOmitirImei.checked && imeiInput.value.length !== 15) {
+            alert('El IMEI debe tener exactamente 15 dígitos. Si no es visible, marque la casilla "Omitir".');
+            imeiInput.focus(); return;
+        }
+
+        // Validación de Seguridad
+        let claveFinal = '';
+        if (selectSeguridad.value === 'PIN') {
+            claveFinal = inputContrasena.value.trim();
+        } else {
+            claveFinal = inputPatronOculto.value;
+            if (!claveFinal) {
+                alert('Debe dibujar un patrón en la cuadrícula.');
+                return;
+            }
+        }
+
+        if (!this.checkValidity()) {
+            $(this).addClass('was-validated');$("#mensajeRegistro").html('<div class="alert alert-danger fw-bold"><i class="fa-solid fa-circle-exclamation me-2"></i>Faltan datos obligatorios del cliente o equipo.</div>');
+            return;
+        }
+
+        let btn = $("#btnGuardarOrden"); let txtOriginal = btn.html();
+        btn.html('<i class="fa-solid fa-circle-notch fa-spin me-2"></i>Generando Orden...'); btn.prop('disabled', true);
+        
+        let payload = {
+            documento: $('#docCliente').val(),
+            nombre: $('#nombreCliente').val(),
+            telefono: $('input[name="telefono"]').val(),
+            marca: $('input[name="marca"]').val(),
+            modelo: $('input[name="modelo"]').val(),
+            imei: imeiInput.value,
+            patron: claveFinal, // Enviamos el PIN o el Patrón dibujado
+            falla: $('textarea[name="falla"]').val(),
+            mano_obra: $('#inputManoObra').val(),
+            acuenta: $('#inputAcuenta').val(),
+            repuestos: repuestosOrden
+        };
+        
+        $.ajax({
+            url: '/api/guardar_orden', method: 'POST', contentType: 'application/json', data: JSON.stringify(payload),
+            success: function(respuesta) {
+                if(respuesta.status === 'success') {
+                    window.open('/ticket_orden/' + respuesta.orden_id, '_blank');
+                    alert('✅ ' + respuesta.msg);
+                    location.href = '/servicio_tecnico'; 
+                } else {
+                    $("#mensajeRegistro").html('<div class="alert alert-danger fw-bold"><i class="fa-solid fa-triangle-exclamation me-2"></i>' + respuesta.msg + '</div>');
+                    btn.html(txtOriginal); btn.prop('disabled', false);
+                }
+            },
+            error: function() {
+                $("#mensajeRegistro").html('<div class="alert alert-danger">Error crítico de comunicación con el servidor.</div>');
+                btn.html(txtOriginal); btn.prop('disabled', false);
+            }
+        });
+    });
+</script>
+{% endblock %}

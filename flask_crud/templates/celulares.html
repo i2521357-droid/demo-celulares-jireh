@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}Inventario de Celulares - Celulares Jireh{% endblock %}
+
+{% block content %}
+<div class="card border-0 shadow-sm rounded-3 mt-4">
+    <div class="card-header bg-white border-bottom-0 pt-4 pb-3 d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold text-primary m-0"><i class="fa-solid fa-mobile-screen-button me-2"></i>Gestión de Celulares</h5>
+        <a href="{{ url_for('nuevo_celular') }}" class="btn btn-primary fw-bold px-4">
+            <i class="fa-solid fa-plus me-2"></i>Registrar Ingreso
+        </a>
+    </div>
+    
+    <!-- BARRA DE BÚSQUEDA RÁPIDA -->
+    <div class="card-body bg-light border-bottom py-3">
+        <div class="row">
+            <div class="col-md-6 mx-auto">
+                <div class="input-group shadow-sm">
+                    <span class="input-group-text bg-white border-primary"><i class="fa-solid fa-barcode text-primary"></i></span>
+                    <input type="text" id="filtroCelulares" class="form-control border-primary form-control-lg text-center fw-bold" placeholder="Pistolear IMEI 1, IMEI 2 o buscar modelo..." onkeyup="filtrarTablaCelulares()" autofocus>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-body p-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle text-center" id="tablaCelulares">
+                <thead class="table-light text-muted small">
+                    <tr>
+                        <th>IMEIs (Identificación)</th>
+                        <th>EQUIPO</th>
+                        <th>ESPECIFICACIONES</th>
+                        <th>COSTO</th>
+                        <th>PRECIO PÚBLICO</th>
+                        <th>ESTADO</th>
+                        <th>ACCIÓN</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in celulares %}
+                    <tr class="fila-celular">
+                        <td class="fw-bold text-primary text-start ps-4" style="letter-spacing: 1px; font-family: monospace; font-size: 1.05rem;">
+                            <div><span class="badge bg-light text-muted border border-secondary shadow-sm me-1" style="font-size: 0.65rem;">1</span>{{ c.imei }}</div>
+                            {% if c.imei2 %}
+                            <div class="text-secondary mt-1"><span class="badge bg-light text-muted border border-secondary shadow-sm me-1" style="font-size: 0.65rem;">2</span>{{ c.imei2 }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="text-uppercase" style="line-height: 1.4;">
+                            <span class="fw-bold text-dark">{{ c.marca }} {{ c.modelo }}</span><br>
+                            {% if c.codigo_modelo %}
+                                <small class="text-muted fst-italic">{{ c.codigo_modelo }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-dark shadow-sm me-1">{{ c.color }}</span>
+                            <span class="badge bg-info text-dark shadow-sm me-1">{{ c.ram }} RAM</span>
+                            <span class="badge bg-secondary shadow-sm">{{ c.rom }} ROM</span>
+                        </td>
+                        <td class="text-danger">S/ {{ "%.2f"|format(c.costo) }}</td>
+                        <td class="text-success fw-bold fs-6">S/ {{ "%.2f"|format(c.precio_cliente) }}</td>
+                        <td>
+                            {% if c.disponible %}
+                                <span class="badge bg-success px-3 py-2 shadow-sm"><i class="fa-solid fa-check me-1"></i>DISPONIBLE</span>
+                            {% else %}
+                                <span class="badge bg-danger px-3 py-2 shadow-sm"><i class="fa-solid fa-lock me-1"></i>VENDIDO</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" title="Ver Detalles">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-5">
+                            <i class="fa-solid fa-mobile-screen fs-1 mb-3 text-light"></i><br>
+                            <h6 class="fw-bold">No hay celulares registrados en el inventario.</h6>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function filtrarTablaCelulares() {
+        let texto = $('#filtroCelulares').val().toUpperCase();
+        
+        $('.fila-celular').each(function() {
+            let rowTexto = $(this).text().toUpperCase();
+            
+            if (rowTexto.includes(texto)) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    }
+</script>
+{% endblock %}

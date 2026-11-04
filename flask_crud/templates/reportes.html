@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% block title %}Reportes - Celulares Jireh{% endblock %}
+
+{% block content %}
+<div class="card border-0 shadow-sm rounded-3 mt-4">
+    <div class="card-header bg-white border-bottom-0 pt-4 pb-3">
+        <h5 class="fw-bold text-primary m-0"><i class="fa-solid fa-chart-line me-2"></i>Centro de Reportes</h5>
+    </div>
+
+    <div class="card-body p-4">
+        
+        <!-- PESTAÑAS (TABS) -->
+        <ul class="nav nav-tabs fw-bold mb-4" id="reporteTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="ventas-tab" data-bs-toggle="tab" data-bs-target="#ventas" type="button" role="tab" aria-controls="ventas" aria-selected="true">
+                    <i class="fa-solid fa-cart-shopping me-2"></i>Historial de Ventas
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link text-secondary" id="servicio-tab" data-bs-toggle="tab" data-bs-target="#servicio" type="button" role="tab" aria-controls="servicio" aria-selected="false">
+                    <i class="fa-solid fa-screwdriver-wrench me-2"></i>Historial de Servicio Técnico
+                </button>
+            </li>
+        </ul>
+
+        <!-- CONTENIDO DE LAS PESTAÑAS -->
+        <div class="tab-content" id="reporteTabsContent">
+            
+            <!-- PESTAÑA: VENTAS -->
+            <div class="tab-pane fade show active" id="ventas" role="tabpanel" aria-labelledby="ventas-tab">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light text-muted small">
+                            <tr>
+                                <th>N° VENTA</th>
+                                <th>FECHA</th>
+                                <th>CLIENTE</th>
+                                <th>MÉTODO PAGO</th>
+                                <th>CAJERO</th>
+                                <th>TOTAL</th>
+                                <th>ACCIÓN</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for v in ventas %}
+                            <tr>
+                                <td class="fw-bold text-primary"># VENTA-{{ "%04d"|format(v.id) }}</td>
+                                <td class="small">{{ v.fecha_hora.strftime('%d/%m/%Y %H:%M') }}</td>
+                                <td class="small fw-bold">{{ v.nombre_cliente }}<br><span class="text-muted fw-normal">{{ v.tipo_comprobante }}: {{ v.documento_cliente }}</span></td>
+                                <td>
+                                    {% if v.metodo_pago == 'EFECTIVO' %}
+                                        <span class="badge bg-success px-2 py-1">EFECTIVO</span>
+                                    {% elif v.metodo_pago == 'YAPE' %}
+                                        <span class="badge bg-primary px-2 py-1" style="background-color: #6f42c1 !important;">YAPE/PLIN</span>
+                                    {% else %}
+                                        <span class="badge bg-dark px-2 py-1">PAYJOY</span>
+                                    {% endif %}
+                                </td>
+                                <td class="small">{{ v.cajero.nombres }}</td>
+                                <td class="fw-bold text-success">S/ {{ "%.2f"|format(v.total) }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="window.open('/ticket_venta/{{ v.id }}', '_blank')" title="Ver Comprobante">
+                                        <i class="fa-solid fa-print"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-5">
+                                    <i class="fa-solid fa-receipt fs-1 mb-3 text-light"></i><br>
+                                    <h6 class="fw-bold">No hay ventas registradas.</h6>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PESTAÑA: SERVICIO TÉCNICO -->
+            <div class="tab-pane fade" id="servicio" role="tabpanel" aria-labelledby="servicio-tab">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light text-muted small">
+                            <tr>
+                                <th>N° ORDEN</th>
+                                <th>FECHA INGRESO</th>
+                                <th>CLIENTE Y EQUIPO</th>
+                                <th>ESTADO</th>
+                                <th>TÉCNICO</th>
+                                <th>TOTAL COBRADO</th>
+                                <th>ACCIÓN</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for o in ordenes %}
+                            <tr>
+                                <td class="fw-bold text-primary"># OS-{{ "%04d"|format(o.id) }}</td>
+                                <td class="small">{{ o.fecha_ingreso.strftime('%d/%m/%Y %H:%M') }}</td>
+                                <td class="small fw-bold">
+                                    {{ o.nombre_cliente }}<br>
+                                    <span class="text-muted fw-normal">{{ o.marca }} {{ o.modelo }}</span>
+                                </td>
+                                <td>
+                                    {% if o.estado == 'RECEPCIONADO' %}
+                                        <span class="badge bg-secondary px-2 py-1">RECEPCIONADO</span>
+                                    {% elif o.estado == 'EN REPARACIÓN' %}
+                                        <span class="badge bg-warning text-dark px-2 py-1">EN REPARACIÓN</span>
+                                    {% elif o.estado == 'LISTO' %}
+                                        <span class="badge bg-success px-2 py-1">LISTO PARA ENTREGAR</span>
+                                    {% else %}
+                                        <span class="badge bg-primary px-2 py-1">ENTREGADO</span>
+                                    {% endif %}
+                                </td>
+                                <td class="small">{{ o.tecnico.nombres }}</td>
+                                <td class="fw-bold text-success">S/ {{ "%.2f"|format(o.total) }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="window.open('/ticket_orden/{{ o.id }}', '_blank')" title="Ver Comprobante">
+                                        <i class="fa-solid fa-print"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-5">
+                                    <i class="fa-solid fa-toolbox fs-1 mb-3 text-light"></i><br>
+                                    <h6 class="fw-bold">No hay órdenes de servicio registradas.</h6>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div> <!-- Fin Tab Content -->
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Pequeño script para asegurar que el color de la pestaña cambie al seleccionarla
+    document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(tab => {
+        tab.addEventListener('shown.bs.tab', function (event) {
+            document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(t => t.classList.add('text-secondary'));
+            event.target.classList.remove('text-secondary');
+        });
+    });
+</script>
+{% endblock %}

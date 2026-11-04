@@ -1,0 +1,443 @@
+{% extends 'base.html' %}
+
+{% block title %}Punto de Venta - Celulares Jireh{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    .select2-container .select2-selection--single { height: 48px; border: 2px solid #0d6efd; border-radius: 8px; }
+    .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 44px; font-weight: bold; font-size: 1.1rem; }
+    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 44px; }
+    .pos-table th { background-color: #f8f9fa; font-size: 0.85rem; text-transform: uppercase; color: #6c757d; }
+    .total-display { font-size: 2.5rem; font-weight: 900; letter-spacing: -1px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mt-3">
+    <!-- PANEL IZQUIERDO: CARRITO DE COMPRAS -->
+    <div class="col-lg-8 mb-4">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-header bg-primary text-white pt-3 pb-3">
+                <h5 class="fw-bold m-0"><i class="fa-solid fa-cart-shopping me-2"></i>Carrito de Compras</h5>
+            </div>
+            <div class="card-body p-4">
+                
+                <!-- BUSCADOR UNIVERSAL -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold text-primary"><i class="fa-solid fa-barcode me-2"></i>Escanear IMEI o Buscar Producto</label>
+                    <select id="buscadorProductos" class="form-control form-control-lg" style="width: 100%;"></select>
+                </div>
+
+                <!-- TABLA DEL CARRITO -->
+                <div class="table-responsive" style="min-height: 300px;">
+                    <table class="table table-hover align-middle pos-table" id="tablaCarrito">
+                        <thead>
+                            <tr>
+                                <th width="50%">PRODUCTO</th>
+                                <th width="15%" class="text-center">PRECIO</th>
+                                <th width="15%" class="text-center">CANTIDAD</th>
+                                <th width="15%" class="text-end">SUBTOTAL</th>
+                                <th width="5%" class="text-center"><i class="fa-solid fa-trash"></i></th>
+                            </tr>
+                        </thead>
+                        <tbody id="cuerpoCarrito">
+                            <tr id="filaVacia">
+                                <td colspan="5" class="text-center text-muted py-5">
+                                    <i class="fa-solid fa-basket-shopping fs-1 mb-2 text-light"></i><br>
+                                    El carrito está vacío.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANEL DERECHO: CLIENTE Y PAGO -->
+    <div class="col-lg-4 mb-4">
+        <div class="card border-0 shadow-sm rounded-3 mb-3">
+            <div class="card-body p-4">
+                <h6 class="fw-bold text-secondary mb-3 border-bottom pb-2"><i class="fa-solid fa-file-invoice me-2"></i>Datos del Comprobante</h6>
+                
+                <!-- TIPO DE COMPROBANTE -->
+                <div class="d-flex justify-content-between mb-3 bg-light p-2 rounded">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="tipoComprobante" id="optBoleta" value="BOLETA" checked>
+                        <label class="form-check-label fw-bold" for="optBoleta">BOLETA</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="tipoComprobante" id="optFactura" value="FACTURA">
+                        <label class="form-check-label fw-bold" for="optFactura">FACTURA</label>
+                    </div>
+                </div>
+
+                <!-- BÚSQUEDA API RENIEC / SUNAT (APISPERU) -->
+                <div class="mb-3">
+                    <label class="form-label text-muted small fw-bold" id="lblDocumento">N° DNI (8 Dígitos)</label>
+                    <div class="input-group">
+                        <input type="text" id="docCliente" class="form-control fw-bold border-primary" maxlength="8" placeholder="Ingrese número...">
+                        <button class="btn btn-primary fw-bold" type="button" id="btnBuscarDoc">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </button>
+                    </div>
+                    <!-- Guardamos tu Token API de APISPERU oculto para usarlo en JS -->
+                    <input type="hidden" id="tokenApisPeru" value="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImRhbmllbGl0bzQwNDZAZ21haWwuY29tIiwianRpIjoiNjUzMDk4Yjc1Yjk4OTJjNCJ9.2SMRYXJpblg-y4M9wtH8nUvX40HByW4r45C_grYNO_8">
+                    <div id="msgApi" class="form-text small fw-bold"></div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-muted small fw-bold" id="lblNombre">NOMBRES Y APELLIDOS</label>
+                    <input type="text" id="nombreCliente" class="form-control text-uppercase bg-light" required readonly placeholder="Se autocompletará...">
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-3 bg-light">
+            <div class="card-body p-4">
+                <h6 class="fw-bold text-secondary mb-3 border-bottom pb-2 border-secondary border-opacity-25"><i class="fa-solid fa-wallet me-2"></i>Resumen y Pago</h6>
+                
+                <!-- METODO DE PAGO -->
+                <div class="mb-3">
+                    <label class="form-label text-muted small fw-bold">MÉTODO DE PAGO</label>
+                    <select id="metodoPago" class="form-select form-select-lg fw-bold border-success text-success">
+                        <option value="EFECTIVO">💵 EFECTIVO</option>
+                        <option value="YAPE">🟣 YAPE / PLIN</option>
+                        <option value="PAYJOY">📱 CRÉDITO PAYJOY</option>
+                    </select>
+                </div>
+                
+                <!-- ALERTA PAYJOY (Oculta por defecto) -->
+                <div id="alertaPayjoy" class="alert alert-warning border-warning fw-bold small py-2 d-none shadow-sm">
+                    <i class="fa-solid fa-triangle-exclamation me-2"></i>¡IMPORTANTE! Recuerde revisar la confirmación del depósito después de 24 horas.
+                </div>
+
+                <!-- TOTAL A PAGAR -->
+                <div class="bg-dark text-white p-3 rounded text-center mt-4 shadow">
+                    <span class="d-block small text-white-50 fw-bold mb-1">TOTAL A COBRAR</span>
+                    <span class="total-display text-success">S/ <span id="montoTotal">0.00</span></span>
+                </div>
+
+                <button class="btn btn-success btn-lg w-100 fw-bold mt-3 shadow-sm" id="btnGenerarVenta" disabled>
+                    <i class="fa-solid fa-receipt me-2"></i>Generar Venta
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    // --- 1. LÓGICA DE DNI / RUC (API APISPERU - Código Propio) ---
+    const radioBoleta = document.getElementById('optBoleta');
+    const radioFactura = document.getElementById('optFactura');
+    const inputDoc = document.getElementById('docCliente');
+    const inputNombre = document.getElementById('nombreCliente');
+    const lblDoc = document.getElementById('lblDocumento');
+    const lblNom = document.getElementById('lblNombre');
+    const msgApi = document.getElementById('msgApi');
+    const token = document.getElementById('tokenApisPeru').value; // Tu token
+
+    function actualizarTipoComprobante() {
+        inputDoc.value = ''; inputNombre.value = ''; msgApi.innerHTML = '';
+        if (radioBoleta.checked) {
+            lblDoc.innerText = 'N° DNI (8 Dígitos)';
+            lblNom.innerText = 'NOMBRES Y APELLIDOS';
+            inputDoc.maxLength = 8;
+        } else {
+            lblDoc.innerText = 'N° RUC (11 Dígitos)';
+            lblNom.innerText = 'RAZÓN SOCIAL';
+            inputDoc.maxLength = 11;
+        }
+    }
+
+    radioBoleta.addEventListener('change', actualizarTipoComprobante);
+    radioFactura.addEventListener('change', actualizarTipoComprobante);
+    
+    // Solo permitir números en el documento
+    inputDoc.addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
+    });
+
+    // Consumo de tu API de APISPERU (Mejorada)
+    document.getElementById('btnBuscarDoc').addEventListener('click', async function() {
+        const num = inputDoc.value.trim();
+        const tipo = radioBoleta.checked ? 'dni' : 'ruc';
+        
+        if ((tipo === 'dni' && num.length !== 8) || (tipo === 'ruc' && num.length !== 11)) {
+            msgApi.className = 'form-text small fw-bold text-danger';
+            msgApi.innerHTML = `<i class="fa-solid fa-xmark me-1"></i>Longitud incorrecta para ${tipo.toUpperCase()}`;
+            return;
+        }
+
+        msgApi.className = 'form-text small fw-bold text-primary';
+        msgApi.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Consultando en APISPERU...';
+        inputNombre.value = '';
+        inputNombre.setAttribute('readonly', true);
+        inputNombre.classList.add('bg-light');
+
+        try {
+            const baseUrl = tipo === "dni"
+                ? "https://dniruc.apisperu.com/api/v1/dni/"
+                : "https://dniruc.apisperu.com/api/v1/ruc/";
+                
+            const urlFinal = baseUrl + num + "?token=" + encodeURIComponent(token);
+
+            const response = await fetch(urlFinal);
+
+            if (!response.ok) {
+                throw new Error("Documento no encontrado");
+            }
+
+            const data = await response.json();
+            
+            // LÓGICA DE EXTRACCIÓN RESILIENTE
+            let nombreExtraido = '';
+            
+            if (tipo === 'dni') {
+                // Primero intentamos extraer nombre completo en un solo string si la API lo envía así
+                if (data.nombre && data.nombre.trim() !== '') {
+                    nombreExtraido = data.nombre;
+                } 
+                // Si lo envía separado, lo concatenamos
+                else if (data.nombres || data.apellidoPaterno) {
+                    nombreExtraido = `${data.nombres || ''} ${data.apellidoPaterno || ''} ${data.apellidoMaterno || ''}`.trim();
+                }
+            } else {
+                // Para RUC siempre suele venir en razonSocial o nombre
+                nombreExtraido = data.razonSocial || data.nombre || '';
+            }
+
+            // Verificamos si logramos extraer un nombre válido o si devolvió "undefined"
+            if (nombreExtraido && !nombreExtraido.includes('undefined')) {
+                inputNombre.value = nombreExtraido;
+                msgApi.className = 'form-text small fw-bold text-success';
+                msgApi.innerHTML = '<i class="fa-solid fa-check me-1"></i>Encontrado';
+            } else {
+                // El DNI existe pero la API no devolvió nombre, habilitamos modo manual
+                inputNombre.value = '';
+                inputNombre.removeAttribute('readonly');
+                inputNombre.classList.remove('bg-light');
+                inputNombre.focus();
+                msgApi.className = 'form-text small fw-bold text-warning text-dark';
+                msgApi.innerHTML = '<i class="fa-solid fa-pen me-1"></i>DNI válido pero sin nombre público. Ingrese manual.';
+            }
+
+        } catch (error) {
+            // Si la API falla por completo o el DNI no existe
+            msgApi.className = 'form-text small fw-bold text-danger';
+            msgApi.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-1"></i>No encontrado. Ingrese manual.`;
+            inputNombre.value = '';
+            inputNombre.removeAttribute('readonly'); 
+            inputNombre.classList.remove('bg-light');
+            inputNombre.focus();
+        }
+    });
+
+    // --- 2. LÓGICA DE ALERTA PAYJOY ---
+    document.getElementById('metodoPago').addEventListener('change', function() {
+        const alerta = document.getElementById('alertaPayjoy');
+        if (this.value === 'PAYJOY') {
+            alerta.classList.remove('d-none');
+        } else {
+            alerta.classList.add('d-none');
+        }
+    });
+
+    // --- 3. CARRITO DE COMPRAS Y BUSCADOR UNIVERSAL ---
+    let carrito = [];
+
+    $(document).ready(function() {
+        // Inicializar Select2 con AJAX apuntando a tu backend
+        $('#buscadorProductos').select2({
+            placeholder: "-- Escanear Código o Buscar Producto --",
+            allowClear: true,
+            ajax: {
+                url: '/api/buscar_productos',
+                dataType: 'json',
+                delay: 250,
+                data: function (params) { return { q: params.term }; },
+                processResults: function (data) {
+                    return {
+                        results: $.map(data, function (item) {
+                            return {
+                                text: item.descripcion + " - S/" + item.precio,
+                                id: item.id,
+                                prod_data: item
+                            }
+                        })
+                    };
+                },
+                cache: true
+            }
+        });
+
+        // Al pistolear o hacer clic en un producto
+        $('#buscadorProductos').on('select2:select', function (e) {
+            let prod = e.params.data.prod_data;
+            agregarAlCarrito(prod);
+            // Limpia la caja y la mantiene abierta para seguir pistoleando
+            $(this).val(null).trigger('change');$(this).select2('open'); 
+        });
+    });
+
+    function agregarAlCarrito(prod) {
+        let existente = carrito.find(item => item.id === prod.id);
+        
+        if (existente) {
+            // Los celulares no se pueden sumar a cantidad 2 porque tienen IMEI único
+            if (existente.tipo === 'CELULAR') {
+                alert('Este equipo celular ya está en el carrito.');
+            } else if (existente.cantidad < existente.stock_max) {
+                existente.cantidad++; // Accesorios y Repuestos sí suman
+            } else {
+                alert('No hay más stock disponible de este producto en el almacén.');
+            }
+        } else {
+            carrito.push({
+                id: prod.id,
+                tipo: prod.tipo,
+                descripcion: prod.descripcion,
+                precio: prod.precio,
+                cantidad: 1,
+                stock_max: prod.stock_max
+            });
+        }
+        renderizarCarrito();
+    }
+
+    function cambiarCantidad(id, suma) {
+        let item = carrito.find(i => i.id === id);
+        if (!item) return;
+
+        if (suma && item.cantidad < item.stock_max) item.cantidad++;
+        else if (!suma && item.cantidad > 1) item.cantidad--;
+        
+        renderizarCarrito();
+    }
+
+    function eliminarDelCarrito(id) {
+        carrito = carrito.filter(item => item.id !== id);
+        renderizarCarrito();
+    }
+
+    function renderizarCarrito() {
+        const tbody = document.getElementById('cuerpoCarrito');
+        const displayTotal = document.getElementById('montoTotal');
+        const btnVender = document.getElementById('btnGenerarVenta');
+        
+        tbody.innerHTML = '';
+        let total = 0;
+
+        if (carrito.length === 0) {
+            tbody.innerHTML = `<tr id="filaVacia"><td colspan="5" class="text-center text-muted py-5"><i class="fa-solid fa-basket-shopping fs-1 mb-2 text-light"></i><br>El carrito está vacío.</td></tr>`;
+            displayTotal.innerText = '0.00';
+            btnVender.disabled = true;
+            return;
+        }
+
+        carrito.forEach(item => {
+            let subtotal = item.precio * item.cantidad;
+            total += subtotal;
+
+            let controlCantidad = '';
+            if (item.tipo === 'CELULAR') {
+                controlCantidad = `<span class="badge bg-secondary px-3 py-2">1 und.</span>`; 
+            } else {
+                controlCantidad = `
+                <div class="input-group input-group-sm w-75 mx-auto">
+                    <button class="btn btn-outline-secondary fw-bold" type="button" onclick="cambiarCantidad('${item.id}', false)">-</button>
+                    <input type="text" class="form-control text-center fw-bold px-1" value="${item.cantidad}" readonly>
+                    <button class="btn btn-outline-secondary fw-bold" type="button" onclick="cambiarCantidad('${item.id}', true)">+</button>
+                </div>`;
+            }
+
+            tbody.innerHTML += `
+                <tr>
+                    <td class="small fw-bold text-dark">${item.descripcion}</td>
+                    <td class="text-center text-success fw-bold">S/ ${item.precio.toFixed(2)}</td>
+                    <td class="text-center">${controlCantidad}</td>
+                    <td class="text-end fw-bold text-primary">S/ ${subtotal.toFixed(2)}</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-outline-danger" onclick="eliminarDelCarrito('${item.id}')" title="Quitar"><i class="fa-solid fa-xmark"></i></button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        displayTotal.innerText = total.toFixed(2);
+        btnVender.disabled = false;
+    }
+
+    // --- 4. PROCESAR LA VENTA (CONEXIÓN AL BACKEND) ---
+    document.getElementById('btnGenerarVenta').addEventListener('click', function() {
+        const documento = document.getElementById('docCliente').value.trim();
+        const nombre = document.getElementById('nombreCliente').value.trim();
+        const comprobante = document.querySelector('input[name="tipoComprobante"]:checked').value;
+        const metodoPago = document.getElementById('metodoPago').value;
+        const total = document.getElementById('montoTotal').innerText;
+
+        // Validación final de seguridad
+        if (!documento || !nombre) {
+            alert('⚠️ Por favor, complete los datos del cliente (DNI/RUC y Nombre) antes de cobrar.');
+            document.getElementById('docCliente').focus();
+            return;
+        }
+
+        if (carrito.length === 0) {
+            alert('⚠️ El carrito está vacío.');
+            return;
+        }
+
+        // Efecto visual de carga
+        const btn = this;
+        const txtOriginal = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin me-2"></i>Cobrando...';
+        btn.disabled = true;
+
+        // Empaquetar todos los datos en formato JSON
+        const payload = {
+            comprobante: comprobante,
+            documento: documento,
+            nombre: nombre,
+            metodo_pago: metodoPago,
+            total: total,
+            carrito: carrito
+        };
+
+        // Enviar a nuestra API en app.py
+        $.ajax({
+            url: '/api/procesar_venta',
+            method: 'POST',
+            contentType: 'application/json', // Importante: Le decimos a Flask que le enviamos JSON puro
+            data: JSON.stringify(payload),
+            success: function(respuesta) {
+                if(respuesta.status === 'success') {
+                    // En lugar de una alerta simple, abrimos el ticket en una pestaña nueva
+                    window.open('/ticket_venta/' + respuesta.venta_id, '_blank');
+                    
+                    // Mostramos confirmación rápida
+                    alert('✅ ' + respuesta.msg);
+                    
+                    // Recargamos el POS para el siguiente cliente
+                    location.reload(); 
+                } else {
+                    alert('❌ Operación denegada:\n' + respuesta.msg);
+                    btnActivo.html(txtOriginal); 
+                    btnActivo.prop('disabled', false);
+                    btnInactivo.prop('disabled', false);
+                }
+            },
+            error: function() {
+                alert('❌ Error crítico de comunicación con el servidor.');
+                btn.innerHTML = txtOriginal;
+                btn.disabled = false;
+            }
+        });
+    });
+
+</script>
+{% endblock %}

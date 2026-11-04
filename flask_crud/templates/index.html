@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Celulares Jireh{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <!-- Tarjetas de Resumen Financiero -->
+    <div class="col-md-4 mb-4">
+        <div class="card border-0 shadow-sm rounded-3 bg-primary text-white h-100">
+            <div class="card-body p-4 d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="text-white-50 fw-bold mb-1">VENTAS DEL MES</h6>
+                    <h3 class="fw-bold m-0">S/ {{ "%.2f"|format(total_ventas) }}</h3>
+                </div>
+                <div class="fs-1 text-white-50"><i class="fa-solid fa-cart-shopping"></i></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card border-0 shadow-sm rounded-3 text-white h-100" style="background-color: #fd7e14;">
+            <div class="card-body p-4 d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="text-white-50 fw-bold mb-1">SERVICIOS (COBRADOS)</h6>
+                    <h3 class="fw-bold m-0">S/ {{ "%.2f"|format(total_servicios) }}</h3>
+                </div>
+                <div class="fs-1 text-white-50"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card border-0 shadow-sm rounded-3 bg-success text-white h-100">
+            <div class="card-body p-4 d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="text-white-50 fw-bold mb-1">INGRESOS TOTALES (MES)</h6>
+                    <h3 class="fw-bold m-0">S/ {{ "%.2f"|format(total_general) }}</h3>
+                </div>
+                <div class="fs-1 text-white-50"><i class="fa-solid fa-sack-dollar"></i></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-5">
+    <!-- Panel Izquierdo: Accesos Directos -->
+    <div class="col-lg-6 mb-4">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-4">
+                <h5 class="fw-bold text-dark mb-4"><i class="fa-solid fa-bolt text-warning me-2"></i>Accesos Rápidos</h5>
+                
+                <a href="{{ url_for('punto_venta') }}" class="btn btn-outline-success btn-lg w-100 mb-3 fw-bold py-3 text-start border-2 shadow-sm d-flex justify-content-between align-items-center" style="border-radius: 10px;">
+                    <div>
+                        <i class="fa-solid fa-cart-shopping fs-4 me-3"></i> 
+                        <span class="fs-5">Nueva Venta POS</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-muted"></i>
+                </a>
+                
+                <a href="{{ url_for('nueva_orden') }}" class="btn btn-outline-primary btn-lg w-100 mb-3 fw-bold py-3 text-start border-2 shadow-sm d-flex justify-content-between align-items-center" style="border-radius: 10px;">
+                    <div>
+                        <i class="fa-solid fa-screwdriver-wrench fs-4 me-3"></i> 
+                        <span class="fs-5">Recepcionar Equipo</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-muted"></i>
+                </a>
+                
+                {% if session.get('rol') == 'ADMINISTRADOR' %}
+                <a href="{{ url_for('reportes') }}" class="btn btn-outline-dark btn-lg w-100 fw-bold py-3 text-start border-2 shadow-sm d-flex justify-content-between align-items-center" style="border-radius: 10px;">
+                    <div>
+                        <i class="fa-solid fa-chart-line fs-4 me-3"></i> 
+                        <span class="fs-5">Ver Reportes</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-muted"></i>
+                </a>
+                {% else %}
+                <a href="{{ url_for('pedidos') }}" class="btn btn-outline-secondary btn-lg w-100 fw-bold py-3 text-start border-2 shadow-sm d-flex justify-content-between align-items-center" style="border-radius: 10px;">
+                    <div>
+                        <i class="fa-solid fa-truck-fast fs-4 me-3"></i> 
+                        <span class="fs-5">Solicitudes y Pedidos</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-muted"></i>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Panel Derecho: Tareas Pendientes y Alertas -->
+    <div class="col-lg-6 mb-4">
+        <!-- Taller Pendiente -->
+        <div class="card border-0 shadow-sm rounded-3 mb-4">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-2">
+                <h6 class="fw-bold text-primary m-0"><i class="fa-solid fa-clipboard-list me-2"></i>Taller: Trabajos Pendientes</h6>
+            </div>
+            <div class="card-body p-3 pt-0">
+                <ul class="list-group list-group-flush">
+                    {% for o in equipos_pendientes %}
+                    <li class="list-group-item px-1 py-2 d-flex justify-content-between align-items-center">
+                        <div class="small">
+                            <span class="fw-bold d-block">{{ o.marca }} {{ o.modelo }}</span>
+                            <span class="text-muted" style="font-size: 0.75rem;">OS-{{ "%04d"|format(o.id) }} | {{ o.falla_reportada[:30] }}...</span>
+                        </div>
+                        <div>
+                            {% if o.estado == 'RECEPCIONADO' %}
+                                <span class="badge bg-secondary" style="font-size: 0.65rem;">EN FILA</span>
+                            {% elif o.estado == 'EN REPARACIÓN' %}
+                                <span class="badge bg-warning text-dark" style="font-size: 0.65rem;">REPARANDO</span>
+                            {% elif o.estado == 'LISTO' %}
+                                <span class="badge bg-success" style="font-size: 0.65rem;">LISTO</span>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item px-1 py-3 text-center text-muted small fw-bold border-0">
+                        <i class="fa-solid fa-check-circle text-success fs-4 mb-2 d-block"></i> No hay equipos pendientes.
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% if equipos_pendientes %}
+                <div class="text-end mt-2">
+                    <a href="{{ url_for('servicio_tecnico') }}" class="btn btn-sm btn-link text-decoration-none fw-bold small">Ver taller completo &rarr;</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Alertas de Stock Bajo -->
+        <div class="card border-0 shadow-sm rounded-3 border-start border-danger border-4">
+            <div class="card-body p-3">
+                <h6 class="fw-bold text-danger mb-3"><i class="fa-solid fa-triangle-exclamation me-2"></i>Alertas de Stock Bajo</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle text-muted m-0" style="font-size: 0.8rem;">
+                        <tbody>
+                            {% for a in alertas_stock %}
+                            <tr>
+                                <td class="fw-bold text-dark">{{ a.nombre }}</td>
+                                <td>
+                                    <span class="badge bg-danger rounded-pill px-2">Quedan {{ a.stock }}</span>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="2" class="text-center text-success py-3 fw-bold">
+                                    <i class="fa-solid fa-box-open me-2"></i> Inventario saludable.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+</div>
+{% endblock %}

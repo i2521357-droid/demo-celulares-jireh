@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestión de Personal - Celulares Jireh{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card border-0 shadow-sm rounded-3 mt-4">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-2">
+                <h5 class="fw-bold text-primary"><i class="fa-solid fa-user-tie me-2"></i>Registrar Nuevo Personal</h5>
+            </div>
+            <div class="card-body p-4">
+                
+                <!-- Buscador de DNI (Adaptado de tu consulta_api.html) -->
+                <div class="row mb-3">
+                    <div class="col-md-8">
+                        <label class="form-label text-muted small fw-bold">CONSULTA DNI (APISPERU)</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="fa-solid fa-id-card"></i></span>
+                            <!-- Validación HTML: Máximo 8 caracteres y solo números -->
+                            <input type="text" id="numero" class="form-control fw-bold" placeholder="Ej: 71234567" maxlength="8" onkeypress="return event.charCode >= 48 && event.charCode <= 57">
+                            <button class="btn btn-primary fw-bold px-4" type="button" id="btnConsultar" onclick="consultar()">
+                                <i class="fa-solid fa-magnifying-glass me-2"></i>Buscar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contenedor dinámico para los mensajes de la API -->
+                <div id="resultado" class="mb-4"></div>
+
+                <hr class="text-light mb-4">
+
+                <!-- Formulario de Registro -->
+                <form id="frmPersonal">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">NOMBRES</label>
+                            <input type="text" id="nombres" name="nombres" class="form-control bg-light" readonly required placeholder="Esperando consulta...">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">APELLIDOS</label>
+                            <input type="text" id="apellidos" name="apellidos" class="form-control bg-light" readonly required placeholder="Esperando consulta...">
+                        </div>
+                        
+                        <div class="col-md-6 mt-4">
+                            <label class="form-label text-muted small fw-bold">USUARIO DEL SISTEMA</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fa-solid fa-at"></i></span>
+                                <input type="text" name="usuario" id="usuario" class="form-control" required placeholder="Ej: daniel.diaz">
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mt-4">
+                            <label class="form-label text-muted small fw-bold">ROL ASIGNADO</label>
+                            <select name="rol_id" class="form-select" required>
+                                <option value="">Seleccione el nivel de acceso...</option>
+                                {% for r in roles %}
+                                    <option value="{{ r.id }}">{{ r.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mt-4 small border-0 border-start border-info border-4 shadow-sm">
+                        <i class="fa-solid fa-circle-info me-2 text-info fs-5 align-middle"></i>
+                        La contraseña por defecto para este trabajador será: <strong class="fs-6">123456</strong>
+                    </div>
+
+                    <div class="text-end mt-4">
+                        <button type="submit" class="btn btn-success fw-bold px-4" id="btnGuardar">
+                            <i class="fa-solid fa-floppy-disk me-2"></i>Guardar Personal
+                        </button>
+                    </div>
+                    
+                    <div id="mensajeRegistro" class="mt-3"></div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // ==========================================
+    // LÓGICA DE CONSULTA DIRECTA AL FRONTEND
+    // ==========================================
+    async function consultar() {
+        const numero = document.getElementById("numero").value.trim();
+        const resultado = document.getElementById("resultado");
+        const btn = document.getElementById("btnConsultar");
+        
+        const inputNombres = document.getElementById('nombres');
+        const inputApellidos = document.getElementById('apellidos');
+        const inputUsuario = document.getElementById('usuario');
+
+        // 1. Validación estricta: Solo 8 dígitos
+        if (numero.length !== 8) {
+            resultado.innerHTML = '<div class="alert alert-warning py-2 mt-2 mb-0"><i class="fa-solid fa-triangle-exclamation me-2"></i>Error: El DNI debe tener exactamente 8 dígitos.</div>';
+            return;
+        }
+
+        // 2. Estado visual: Consultando
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Buscando';
+        btn.disabled = true;
+        resultado.innerHTML = '<div class="alert alert-primary py-2 mt-2 mb-0"><i class="fa-solid fa-circle-notch fa-spin me-2"></i>Consultando DNI en APISPERU...</div>';
+
+        // 3. Petición Directa (Token en Frontend para mayor velocidad local)
+        const token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImRhbmllbGl0bzQwNDZAZ21haWwuY29tIiwianRpIjoiNjUzMDk4Yjc1Yjk4OTJjNCJ9.2SMRYXJpblg-y4M9wtH8nUvX40HByW4r45C_grYNO_8";
+        const urlFinal = `https://dniruc.apisperu.com/api/v1/dni/${numero}?token=${token}`;
+
+        try {
+            const response = await fetch(urlFinal);
+            const data = await response.json();
+
+            // APISPERU a veces devuelve 200 OK pero con success en false si no encuentra el DNI
+            if (!response.ok || data.success === false) {
+                throw new Error("No se encontraron datos en la API.");
+            }
+
+            // 4. Estado visual: Éxito y Autocompletado
+            resultado.innerHTML = '<div class="alert alert-success py-2 mt-2 mb-0"><i class="fa-solid fa-check-circle me-2"></i>Datos encontrados. Autocompletando campos...</div>';
+
+            inputNombres.value = data.nombres;
+            inputApellidos.value = data.apellidoPaterno + " " + data.apellidoMaterno;
+            
+            // Mantener campos bloqueados
+            inputNombres.readOnly = true;
+            inputApellidos.readOnly = true;
+            inputNombres.classList.add('bg-light');
+            inputApellidos.classList.add('bg-light');
+
+            // Generar usuario automático (Ej: daniel.diaz)
+            if(data.nombres && data.apellidoPaterno) {
+                let pNombre = data.nombres.split(' ')[0].toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                let pApellido = data.apellidoPaterno.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                inputUsuario.value = `${pNombre}.${pApellido}`;
+            }
+
+            setTimeout(() => { resultado.innerHTML = ''; }, 3000);
+
+        } catch (error) {
+            // 5. Estado visual: Falla y Desbloqueo Manual
+            resultado.innerHTML = '<div class="alert alert-secondary py-2 mt-2 mb-0 border-start border-secondary border-4"><i class="fa-solid fa-keyboard me-2"></i>No se encontró el DNI. <strong>Se han habilitado los campos para ingreso manual.</strong></div>';
+            
+            inputNombres.value = "";
+            inputApellidos.value = "";
+            inputUsuario.value = "";
+            
+            // Liberar campos
+            inputNombres.readOnly = false;
+            inputApellidos.readOnly = false;
+            inputNombres.classList.remove('bg-light');
+            inputApellidos.classList.remove('bg-light');
+            inputNombres.focus();
+        } finally {
+            btn.innerHTML = '<i class="fa-solid fa-magnifying-glass me-2"></i>Buscar';
+            btn.disabled = false;
+        }
+    }
+
+    // ==========================================
+    // LÓGICA DE REGISTRO
+    // ==========================================
+    $(document).ready(function() {$("#frmPersonal").submit(function(e) {
+            e.preventDefault(); 
+            let btn = $("#btnGuardar");
+            let txtOriginal = btn.html();
+            
+            btn.html('<i class="fa-solid fa-circle-notch fa-spin me-2"></i>Guardando...');
+            btn.prop('disabled', true);
+            
+            $.ajax({
+                url: '/api/crear_personal', 
+                method: 'POST',
+                data: $(this).serialize(), 
+                success: function(respuesta) {
+                    if(respuesta.status === 'success') {
+                        $("#mensajeRegistro").html('<div class="alert alert-success mt-3"><i class="fa-solid fa-check me-2"></i>' + respuesta.msg + '</div>');
+                        $("#frmPersonal")[0].reset();
+                        document.getElementById('numero').value = "";
+                        
+                        // Volver a bloquear campos
+                        document.getElementById('nombres').readOnly = true;
+                        document.getElementById('apellidos').readOnly = true;
+                        document.getElementById('nombres').classList.add('bg-light');
+                        document.getElementById('apellidos').classList.add('bg-light');
+                    } else {
+                        $("#mensajeRegistro").html('<div class="alert alert-danger mt-3"><i class="fa-solid fa-triangle-exclamation me-2"></i>' + respuesta.msg + '</div>');
+                    }
+                    btn.html(txtOriginal);
+                    btn.prop('disabled', false);
+                },
+                error: function() {
+                    $("#mensajeRegistro").html('<div class="alert alert-danger mt-3">Error interno del servidor al guardar.</div>');
+                    btn.html(txtOriginal);
+                    btn.prop('disabled', false);
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

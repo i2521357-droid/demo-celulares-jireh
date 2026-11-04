@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprobante de Venta N° {{ venta.id }}</title>
+    <!-- Usamos un CDN directo de Bootstrap para que imprima sin problemas -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f0f2f5; font-family: 'Courier New', Courier, monospace; }
+        .ticket-container {
+            max-width: 400px; /* Ancho optimizado para ticketera térmica o visualización móvil */
+            margin: 30px auto;
+            background: #fff;
+            padding: 25px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 15px; margin-bottom: 15px; }
+        .header h3 { margin: 0; font-weight: bold; font-family: Arial, sans-serif; letter-spacing: 1px; }
+        .header p { margin: 0; font-size: 0.85rem; }
+        
+        .info-section { font-size: 0.85rem; margin-bottom: 15px; border-bottom: 2px dashed #000; padding-bottom: 15px; }
+        .info-section div { margin-bottom: 3px; }
+        
+        .table-items { width: 100%; font-size: 0.8rem; margin-bottom: 15px; }
+        .table-items th { border-bottom: 1px solid #000; padding-bottom: 5px; text-align: left; }
+        .table-items td { padding: 8px 0; border-bottom: 1px dotted #ccc; }
+        .table-items .col-cant { width: 15%; text-align: center; }
+        .table-items .col-desc { width: 55%; }
+        .table-items .col-sub { width: 30%; text-align: right; }
+        
+        .totals { font-size: 0.9rem; text-align: right; border-bottom: 2px dashed #000; padding-bottom: 15px; margin-bottom: 15px; }
+        .totals .gran-total { font-size: 1.2rem; font-weight: bold; margin-top: 5px; }
+        
+        .footer { text-align: center; font-size: 0.75rem; }
+        
+        /* Ocultar botones al momento de imprimir */
+        @media print {
+            body { background: #fff; margin: 0; padding: 0; }
+            .ticket-container { box-shadow: none; margin: 0; padding: 0; width: 100%; max-width: 100%; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Botones de Acción (No se imprimen) -->
+    <div class="text-center mt-3 no-print">
+        <button class="btn btn-primary fw-bold px-4 me-2" onclick="window.print()">
+            🖨️ Imprimir / Guardar PDF
+        </button>
+        <button class="btn btn-outline-secondary fw-bold px-4" onclick="window.close()">
+            ✖️ Cerrar
+        </button>
+    </div>
+
+    <!-- TICKET -->
+    <div class="ticket-container">
+        
+        <div class="header">
+            <h3>CELULARES JIREH</h3>
+            <p>Venta de equipos, repuestos y accesorios</p>
+            <p><strong>RUC:</strong> 10732333771</p> <!-- Reemplaza con tu RUC real si tienes -->
+            <p>Villa Perené - Junín</p>
+            <h5 class="mt-2 mb-0 fw-bold">{{ venta.tipo_comprobante }} ELECTRÓNICA</h5>
+            <p>N° TICKET: <strong>V-{{ "%06d"|format(venta.id) }}</strong></p>
+        </div>
+
+        <div class="info-section">
+            <div><strong>FECHA:</strong> {{ venta.fecha_hora.strftime('%d/%m/%Y %H:%M') }}</div>
+            <div><strong>CAJERO(A):</strong> {{ cajero.nombres }}</div>
+            <div><strong>CLIENTE:</strong> {{ venta.nombre_cliente }}</div>
+            <div><strong>DNI/RUC:</strong> {{ venta.documento_cliente }}</div>
+            <div><strong>PAGO:</strong> {{ venta.metodo_pago }}</div>
+        </div>
+
+        <table class="table-items">
+            <thead>
+                <tr>
+                    <th class="col-cant">CANT</th>
+                    <th class="col-desc">DESCRIPCIÓN</th>
+                    <th class="col-sub">IMPORTE</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in detalles %}
+                <tr>
+                    <td class="col-cant align-top">{{ d.cantidad }}</td>
+                    <td class="col-desc">
+                        <!-- El texto es convertido en mayúsculas para un formato más estándar -->
+                        {{ d.descripcion | upper }}
+                    </td>
+                    <td class="col-sub align-top">S/ {{ "%.2f"|format(d.subtotal) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="totals">
+            <!-- Agregamos |float antes de multiplicar -->
+            <div>OP. GRAVADA: S/ {{ "%.2f"|format(venta.total|float * 0.82) }}</div>
+            <div>IGV (18%): S/ {{ "%.2f"|format(venta.total|float * 0.18) }}</div>
+            <div class="gran-total">TOTAL: S/ {{ "%.2f"|format(venta.total) }}</div>
+        </div>
+
+        <div class="footer">
+            <p class="mb-1"><strong>¡GRACIAS POR SU PREFERENCIA!</strong></p>
+            <p class="mb-1 text-muted">Conserve este comprobante para hacer válida la garantía de sus equipos.</p>
+        </div>
+
+    </div>
+
+</body>
+</html>

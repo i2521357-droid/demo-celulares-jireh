@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestión de Pedidos - Celulares Jireh{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-lg-9 mx-auto">
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+            <div class="card-body p-5 text-center">
+                
+                <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle mb-4" style="width: 90px; height: 90px;">
+                    <i class="fa-solid fa-boxes-packing fs-1"></i>
+                </div>
+
+                <div class="mb-2">
+                    <span class="badge bg-warning text-dark fw-bold px-3 py-2 rounded-pill shadow-sm">
+                        <i class="fa-solid fa-gears me-1"></i> MÓDULO EN CONSTRUCCIÓN
+                    </span>
+                </div>
+
+                <div class="mt-4 pt-2">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary fw-bold px-4 py-2 shadow-sm">
+                        <i class="fa-solid fa-arrow-left me-2"></i>Volver al Panel Principal
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

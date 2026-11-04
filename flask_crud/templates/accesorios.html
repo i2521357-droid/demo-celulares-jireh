@@ -1,0 +1,276 @@
+{% extends 'base.html' %}
+
+{% block title %}Inventario de Accesorios - Celulares Jireh{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+{% endblock %}
+
+{% block content %}
+<div class="card border-0 shadow-sm rounded-3 mt-4">
+    <div class="card-header bg-white border-bottom-0 pt-4 pb-3 d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold text-primary m-0"><i class="fa-solid fa-headphones me-2"></i>Gestión de Accesorios</h5>
+        <!-- Botón solo para accesorios NUEVOS -->
+        <a href="{{ url_for('nuevo_accesorio') }}" class="btn btn-outline-primary fw-bold px-4">
+            <i class="fa-solid fa-asterisk me-2"></i>Registrar Nuevo Modelo/Tipo
+        </a>
+    </div>
+    
+    <!-- BARRA DE FILTROS INTELIGENTES -->
+    <div class="card-body bg-light border-bottom py-3">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <input list="listaFiltroTipos" id="filtroTipo" class="form-control fw-bold text-secondary border-primary" placeholder="TIPO (Ej: CABLE)" onkeyup="filtrarTabla()" onchange="filtrarTabla()" autocomplete="off">
+                <datalist id="listaFiltroTipos">
+                    {% for t in tipos %} <option value="{{ t }}"> {% endfor %}
+                </datalist>
+            </div>
+            <div class="col-md-3">
+                <input list="listaFiltroMarcas" id="filtroMarca" class="form-control fw-bold text-secondary border-primary" placeholder="MARCA (Ej: XIAOMI)" onkeyup="filtrarTabla()" onchange="filtrarTabla()" autocomplete="off">
+                <datalist id="listaFiltroMarcas">
+                    <option value="GENÉRICA">
+                    {% for m in marcas %} <option value="{{ m }}"> {% endfor %}
+                </datalist>
+            </div>
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-primary"><i class="fa-solid fa-magnifying-glass text-primary"></i></span>
+                    <input type="text" id="filtroTexto" class="form-control border-primary" placeholder="Buscar por detalles, especificaciones o modelo..." onkeyup="filtrarTabla()">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-body p-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle text-center" id="tablaAccesorios">
+                <thead class="table-light text-muted small">
+                    <tr>
+                        <th>TIPO</th>
+                        <th>MARCA</th>
+                        <th>DETALLES / COMPATIBILIDAD</th>
+                        <th>COSTO MAYOR</th>
+                        <th>PRECIO PÚBLICO</th>
+                        <th>STOCK</th>
+                        <th>ACCIÓN</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in accesorios %}
+                    <!-- Guardamos tipo y marca en data-attributes para que JavaScript los filtre rapidísimo -->
+                    <tr class="fila-accesorio" data-tipo="{{ a.tipo }}" data-marca="{{ a.marca if a.marca else 'GENÉRICA' }}">
+                        <td><span class="badge bg-primary px-2 py-1 shadow-sm">{{ a.tipo }}</span></td>
+                        <td class="fw-bold text-uppercase text-secondary">{{ a.marca if a.marca else 'GENÉRICA' }}</td>
+                        <td class="text-uppercase fw-bold" style="line-height: 1.6;">
+                            {% if a.modelo %}<span class="text-dark">{{ a.modelo }}</span><br>{% endif %}
+                            
+                            {% if a.modelos_compatibles %}
+                                {% for compatible in a.modelos_compatibles.split(',') %}
+                                    {% if compatible.strip() %}<span class="text-muted" style="font-size: 0.85rem;">{{ compatible.strip() }}</span><br>{% endif %}
+                                {% endfor %}
+                            {% endif %}
+                            
+                            {% if a.caracteristicas %}
+                                {% for spec in a.caracteristicas.split('|') %}
+                                    <span class="badge bg-light text-dark border border-secondary shadow-sm mb-1" style="font-size: 0.7rem;">{{ spec.strip() }}</span>
+                                {% endfor %}
+                            {% endif %}
+                        </td>
+                        <td class="text-danger">S/ {{ "%.2f"|format(a.costo) }}</td>
+                        <td class="text-success fw-bold">S/ {{ "%.2f"|format(a.precio_cliente) }}</td>
+                        <td>
+                            {% if a.stock <= 5 %}
+                                <span class="badge bg-danger px-3 py-2 fs-6 shadow-sm">{{ a.stock }} und.</span>
+                            {% else %}
+                                <span class="badge bg-success px-3 py-2 fs-6 shadow-sm">{{ a.stock }} und.</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <!-- BOTÓN DE RECARGA DIRECTA -->
+                            <button class="btn btn-sm btn-success fw-bold shadow-sm" onclick="abrirModalRecarga('{{ a.id }}', '{{ a.tipo }}', '{{ a.marca if a.marca else 'GENÉRICA' }}', '{{ a.caracteristicas if a.caracteristicas else (a.modelo if a.modelo else 'UNIVERSAL') }}', '{{ a.costo }}')">
+                                <i class="fa-solid fa-plus"></i> Stock
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" class="text-center text-muted py-4"><i class="fa-solid fa-box-open fs-2 mb-2"></i><br>Inventario de accesorios vacío.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE RECARGA DE STOCK -->
+<div class="modal fade" id="modalRecarga" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-light border-0">
+        <h5 class="modal-title fw-bold text-success"><i class="fa-solid fa-boxes-stacked me-2"></i>Recargar Inventario</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="frmRecarga">
+            <input type="hidden" name="id_accesorio" id="id_accesorio_recarga">
+            <input type="hidden" id="tipo_accesorio_recarga">
+            
+            <div class="alert alert-secondary py-2 mb-4">
+                <span class="badge bg-primary me-2" id="lblTipo"></span>
+                <strong id="lblMarca" class="me-2 text-dark"></strong>
+                <span id="lblDetalle" class="small text-muted"></span>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label class="form-label text-muted small fw-bold">NUEVO COSTO</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light text-danger">S/</span>
+                        <input type="number" step="0.01" name="costo_recarga" id="costo_recarga" class="form-control fw-bold" required oninput="calcularPrecioRecarga()">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-muted small fw-bold">PRECIO VENTA</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-success text-white">S/</span>
+                        <input type="number" step="0.01" name="precio_cliente_recarga" id="precio_cliente_recarga" class="form-control fw-bold bg-light" required readonly>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-muted small fw-bold">CANTIDAD (+)</label>
+                    <input type="number" min="1" value="1" name="stock_recarga" id="stock_recarga" class="form-control fw-bold border-success" required>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label text-muted small fw-bold">PROVEEDOR</label>
+                <select name="proveedor_id_recarga" id="proveedor_id_recarga" class="form-select select2-modal" style="width: 100%;">
+                    <option value="">-- Buscar o Escribir Nuevo --</option>
+                    {% for p in proveedores %} <option value="{{ p.id }}">{{ p.razon_social }}</option> {% endfor %}
+                </select>
+            </div>
+
+            <div id="mensajeRecarga"></div>
+
+            <div class="text-end mt-3">
+                <button type="button" class="btn btn-light me-2" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-success fw-bold" id="btnGuardarRecarga">
+                    <i class="fa-solid fa-check me-2"></i>Actualizar
+                </button>
+            </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    // 1. LÓGICA DE FILTROS EN TIEMPO REAL
+    function filtrarTabla() {
+        let tipo = $('#filtroTipo').val().toUpperCase();
+        let marca = $('#filtroMarca').val().toUpperCase();
+        let texto = $('#filtroTexto').val().toUpperCase();
+        
+        $('.fila-accesorio').each(function() {
+            let rowTipo = $(this).data('tipo').toUpperCase();
+            let rowMarca = $(this).data('marca').toUpperCase();
+            let rowTexto = $(this).text().toUpperCase();
+            
+            let show = true;
+            if (tipo && rowTipo !== tipo) show = false;
+            if (marca && rowMarca !== marca) show = false;
+            if (texto && !rowTexto.includes(texto)) show = false;
+            
+            $(this).toggle(show);
+        });
+    }
+
+    // 2. INICIALIZAR MODAL Y SELECT2
+    const modalRecarga = new bootstrap.Modal(document.getElementById('modalRecarga'));
+    
+    $(document).ready(function() {
+        // Select2 dentro de un modal necesita un 'dropdownParent' para no esconderse detrás
+        $('.select2-modal').select2({
+            dropdownParent: $('#modalRecarga'),
+            placeholder: "-- Buscar o Escribir Nuevo --",
+            allowClear: true, tags: true,
+            createTag: function (params) {
+                var term = $.trim(params.term);
+                if (term === '') return null;
+                return { id: term, text: term + ' (Crear)', newTag: true }
+            }
+        });
+    });
+
+    // 3. ABRIR MODAL CON DATOS
+    function abrirModalRecarga(id, tipo, marca, detalle, costo_actual) {
+        $('#frmRecarga')[0].reset();
+        $('#proveedor_id_recarga').val(null).trigger('change');
+        $('#mensajeRecarga').html('');
+        
+        $('#id_accesorio_recarga').val(id);
+        $('#tipo_accesorio_recarga').val(tipo);
+        
+        $('#lblTipo').text(tipo);
+        $('#lblMarca').text(marca);
+        $('#lblDetalle').text(detalle.split('|').join(' ')); // Limpia formato visual
+        
+        $('#costo_recarga').val(parseFloat(costo_actual).toFixed(2));
+        calcularPrecioRecarga(); // Calcula el precio de venta basado en el costo
+        
+        modalRecarga.show();
+        setTimeout(() => { $('#stock_recarga').focus(); }, 500); // Foco directo a cantidad
+    }
+
+    // 4. ALGORITMO DE PRECIOS EXACTO (Heredado)
+    function calcularPrecioRecarga() {
+        const costoInput = document.getElementById('costo_recarga').value;
+        const precioCliente = document.getElementById('precio_cliente_recarga');
+        const tipoInput = document.getElementById('tipo_accesorio_recarga').value.trim().toUpperCase();
+        
+        if (!costoInput || parseFloat(costoInput) <= 0) { precioCliente.value = ''; return; }
+        const costo = parseFloat(costoInput);
+        
+        if (tipoInput.includes('MICA')) {
+            precioCliente.value = (10.00).toFixed(2);
+            return;
+        }
+
+        let precioFinal = 0;
+        if (costo <= 5) {
+            precioFinal = 10;
+        } else {
+            precioFinal = Math.ceil((costo * 2) / 5) * 5; 
+        }
+        precioCliente.value = precioFinal.toFixed(2);
+    }
+
+    // 5. GUARDADO AJAX DE RECARGA
+    $(document).ready(function() {
+        $("#frmRecarga").submit(function(e) {
+            e.preventDefault(); 
+            let btn = $("#btnGuardarRecarga"); let txtOriginal = btn.html();
+            btn.html('<i class="fa-solid fa-circle-notch fa-spin me-2"></i>Procesando...'); btn.prop('disabled', true);
+            
+            $.ajax({
+                url: '/api/recargar_accesorio', method: 'POST', data: $(this).serialize(), 
+                success: function(respuesta) {
+                    if(respuesta.status === 'success') {
+                        $("#mensajeRecarga").html('<div class="alert alert-success mt-3 py-2"><i class="fa-solid fa-check me-2"></i>' + respuesta.msg + '</div>');
+                        setTimeout(() => { location.reload(); }, 800); 
+                    } else {
+                        $("#mensajeRecarga").html('<div class="alert alert-danger mt-3 py-2"><i class="fa-solid fa-triangle-exclamation me-2"></i>' + respuesta.msg + '</div>');
+                        btn.html(txtOriginal); btn.prop('disabled', false);
+                    }
+                },
+                error: function() {
+                    $("#mensajeRecarga").html('<div class="alert alert-danger mt-3 py-2">Error de conexión.</div>');
+                    btn.html(txtOriginal); btn.prop('disabled', false);
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
